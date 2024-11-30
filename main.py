@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score
+from pathlib import Path
 
 def plot_metrics(precision, recall, f1):
     # Create a bar chart to display precision, recall, and F1 score
@@ -49,7 +50,12 @@ def calculate_metrics(recommendations, ground_truth):
 
 # Split the dataset into training and testing datasets
 def split_data(data, test_size=0.2):
+    # Split the data into train and test sets
     train_data, test_data = train_test_split(data, test_size=test_size, random_state=42)
+
+    # Ensure test customers exist in training data
+    test_data = test_data[test_data['CustomerID'].isin(train_data['CustomerID'])]
+
     return train_data, test_data
 
 def generate_recommendations_and_ground_truth(graph, test_data, top_n=5):
@@ -71,10 +77,15 @@ def generate_recommendations_and_ground_truth(graph, test_data, top_n=5):
 
 
 # 1. Load Dataset with Row Limiting
-def load_dataset(filepath, rows=1005):
-    data = pd.read_csv(filepath)  # Replace with your dataset path
-    data = data.head(rows)  # Limit to the first `rows` rows
-    return data
+def load_dataset(filepath: Path, rows=1005) -> pd.DataFrame:
+    """Load and sample dataset with error handling."""
+    try:
+        data = pd.read_csv(filepath)  # Replace with your dataset path
+        return data.head(rows)  # Limit to the first `rows` rows
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Dataset not found at {filepath}")
+    except Exception as e:
+        raise Exception(f"Error loading dataset: {str(e)}")
 
 # 2. Preprocess Data
 def preprocess_data(data):
@@ -179,26 +190,28 @@ def display_recommendations(recommendations):
 
 # 7. Visualize the Entire Graph
 def visualize_graph(graph):
-    plt.figure(figsize=(12, 8))
-    
+    plt.figure(figsize=(12, 8))  # Ensure a new figure is created
+    plt.title("Visualization of Customer-Product Graph ")  # Add title
     # Define node colors based on type
     node_colors = []
     for node in graph.nodes():
         if graph.nodes[node].get('type') == 'customer':
-            node_colors.append('lightgreen')  # Color for customers
+            node_colors.append('lightblue')  # Color for customers
         elif graph.nodes[node].get('type') == 'product':
-            node_colors.append('lightblue')  # Color for products
+            node_colors.append('orange')  # Color for products
 
-    # Visualize the entire graph (no node limit)
-    pos = nx.spring_layout(graph, k=0.15, iterations=20)  # Positioning of nodes for better clarity
+    # Positioning nodes for better clarity
+    pos = nx.spring_layout(graph, k=0.15, iterations=20)  # Can adjust layout if needed
     nx.draw(graph, pos, with_labels=True, node_color=node_colors, edge_color="gray", node_size=500, alpha=0.7)
-    plt.title("Visualization of Customer-Product Graph (Entire Graph)")
-    plt.show()
+    
+   
+    plt.tight_layout()  # Adjust layout to avoid clipping
+    plt.show()  # Show the plot
 
 # Main Execution
 if __name__ == "__main__":
     # Path to your dataset
-    dataset_path = "./ecommerce_customer_data_custom_ratios.csv"  # Update with your file location
+    dataset_path = Path("./ecommerce_customer_data_custom_ratios.csv")  # Update with your file location
     data = load_dataset(dataset_path, rows=1005)  # Limit to 1005 rows
     processed_data = preprocess_data(data)
     
